@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>thumb</title></head>
+<body style="margin:0;background:#222">
+<canvas id="c" width="1280" height="800" style="width:640px"></canvas>
+<script>
+const c=document.getElementById('c'),x=c.getContext('2d');
+const F='"Malgun Gothic","맑은 고딕",sans-serif';
+function rr(px,py,w,h,r){x.beginPath();x.moveTo(px+r,py);x.arcTo(px+w,py,px+w,py+h,r);x.arcTo(px+w,py+h,px,py+h,r);x.arcTo(px,py+h,px,py,r);x.arcTo(px,py,px+w,py,r);x.closePath();}
+function t(s,px,py,size,color,weight,align){x.font=(weight||400)+' '+size+'px '+F;x.fillStyle=color;x.textAlign=align||'left';x.textBaseline='alphabetic';x.fillText(s,px,py);}
+// 배경
+let g=x.createLinearGradient(0,0,1280,800);g.addColorStop(0,'#0a1630');g.addColorStop(1,'#1d3d78');x.fillStyle=g;x.fillRect(0,0,1280,800);
+x.fillStyle='rgba(255,255,255,0.05)';for(let i=0;i<1280;i+=32)for(let j=0;j<800;j+=32){x.beginPath();x.arc(i,j,1.3,0,7);x.fill();}
+let rg=x.createRadialGradient(980,380,10,980,380,520);rg.addColorStop(0,'rgba(90,150,255,0.35)');rg.addColorStop(1,'rgba(90,150,255,0)');x.fillStyle=rg;x.fillRect(0,0,1280,800);
+// 왼쪽 텍스트
+{const label='작업효율분석을 위한';x.font='700 26px '+F;const bw=x.measureText(label).width+48;
+rr(80,88,bw,52,26);x.fillStyle='rgba(255,209,102,0.18)';x.fill();x.strokeStyle='rgba(255,209,102,0.55)';x.lineWidth=1.5;x.stroke();
+t(label,80+bw/2,123,26,'#ffd166',700,'center');}
+t('월간 인시',76,250,84,'#ffffff',800);
+t('통합 도구',76,350,84,'#ffffff',800);
+t('파일 200개 매칭·합산',80,428,34,'#ffd166',700);
+t('3일 걸리던 작업을 10분으로',80,474,34,'#ffd166',700);
+t('순번 자동 매칭 · 저해품목 판정 · 9시트 엑셀',80,526,22,'#b8c7e6',400);
+// 흐름 칩
+const chips=[['입력 3종','xlsx'],['자동 매칭','순번 기준'],['결과 엑셀','9개 시트']];
+chips.forEach((ch,i)=>{const px=80+i*196,py=590;rr(px,py,166,88,16);x.fillStyle='rgba(255,255,255,0.08)';x.fill();x.strokeStyle='rgba(255,255,255,0.22)';x.lineWidth=1.5;x.stroke();
+  t(ch[0],px+83,py+42,24,'#ffffff',700,'center');t(ch[1],px+83,py+70,17,'#9fb3da',400,'center');
+  if(i<2){x.fillStyle='#ffd166';x.beginPath();x.moveTo(px+174,py+36);x.lineTo(px+188,py+44);x.lineTo(px+174,py+52);x.closePath();x.fill();}});
+// 오른쪽 앱 창
+const W={x:690,y:110,w:520,h:590};
+x.save();x.shadowColor='rgba(0,0,0,0.45)';x.shadowBlur=50;x.shadowOffsetY=20;rr(W.x,W.y,W.w,W.h,20);x.fillStyle='#ffffff';x.fill();x.restore();
+x.save();rr(W.x,W.y,W.w,W.h,20);x.clip();
+x.fillStyle='#eef2f8';x.fillRect(W.x,W.y,W.w,50);
+['#ff6b6b','#ffd166','#51cf66'].forEach((col,i)=>{x.fillStyle=col;x.beginPath();x.arc(W.x+28+i*22,W.y+25,7,0,7);x.fill();});
+t('인시 통합 결과',W.x+W.w/2,W.y+32,18,'#4a5568',700,'center');
+// 통계 카드
+const stats=[['매칭','200 / 200','#1d7a46','#e6f4ec'],['저해 · 초과','15','#c0392b','#fdecea'],['저해 · 과소','9','#2f5fb3','#e8f0fd']];
+stats.forEach((s,i)=>{const px=W.x+22+i*162,py=W.y+74;rr(px,py,150,96,12);x.fillStyle=s[3];x.fill();
+  t(s[0],px+16,py+34,17,'#5b6470',700);t(s[1],px+16,py+76,i?38:26,s[2],800);});
+// 표
+const tx=W.x+22,ty=W.y+196,tw=W.w-44;
+rr(tx,ty,tw,40,8);x.fillStyle='#2f5fb3';x.fill();
+const cols=[['공장',14],['구분',112],['표준인시',206],['사용인시',308],['편차율',412]];
+cols.forEach(cc=>t(cc[0],tx+cc[1],ty+27,16,'#ffffff',700));
+const rows=[['1공장','계획','952.1','990.9','+4.1%',''],['1공장','비계획','355.9','367.6','+3.3%',''],['2공장','계획','804.6','1,021.3','+26.9%','over'],['2공장','NRTS','212.4','208.0','-2.1%',''],['3공장','계획','633.0','511.8','-19.1%','under'],['3공장','폐품','98.8','92.9','-6.0%','']];
+rows.forEach((r,i)=>{const py=ty+48+i*42;
+  if(r[5]){rr(tx,py,tw,36,6);x.fillStyle=r[5]==='over'?'#fde2e1':'#e1ecfb';x.fill();}
+  else if(i%2){x.fillStyle='#f6f8fb';x.fillRect(tx,py,tw,36);}
+  r.slice(0,5).forEach((v,k)=>t(v,tx+cols[k][1],py+25,16,k===4&&r[5]?(r[5]==='over'?'#c0392b':'#2f5fb3'):'#1f2328',k===4&&r[5]?800:400));});
+// 버튼
+rr(W.x+22,W.y+W.h-78,W.w-44,52,12);x.fillStyle='#2f5fb3';x.fill();
+t('⬇  엑셀 내려받기',W.x+W.w/2,W.y+W.h-44,20,'#ffffff',700,'center');
+x.restore();
+c.toBlob(async b=>{const r=await fetch('/save/'+encodeURIComponent('갤러리등록')+'/thumbnail.png',{method:'POST',body:b});document.title='saved:'+r.status;},'image/png');
+</script></body></html>

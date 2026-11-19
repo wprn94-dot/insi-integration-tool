@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>월간 인시 통합 도구</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#fff; --ink:#1f2328; --sub:#5b6470; --line:#dde1e6;
+  --accent:#2f5fb3; --accent-ink:#fff; --ok:#1d7a46; --ok-bg:#e6f4ec;
+  --bad:#b42318; --bad-bg:#fdecea; --warn:#9a6700; --warn-bg:#fff6dd;
+  --over:#fde2e1; --under:#e1ecfb; --head:#eef2f8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#16181c; --card:#1f2228; --ink:#e7e9ec; --sub:#a0a8b3; --line:#343943;
+    --accent:#6f9cf0; --accent-ink:#0e1520; --ok:#5cc98a; --ok-bg:#16301f;
+    --bad:#ff8a80; --bad-bg:#3a1c1a; --warn:#e7c35a; --warn-bg:#342a10;
+    --over:#4a2422; --under:#1e3150; --head:#272c35;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 "맑은 고딕","Malgun Gothic","Apple SD Gothic Neo","Noto Sans KR","Noto Sans CJK KR",system-ui,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:22px;margin:0 0 4px}
+.lead{color:var(--sub);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin-bottom:16px}
+.step{display:flex;align-items:center;gap:10px;margin:0 0 12px;font-size:16px;font-weight:700}
+.step .n{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:13px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:760px){.grid3{grid-template-columns:1fr}}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:14px;min-height:150px;display:flex;flex-direction:column;gap:8px;transition:.15s}
+.drop.over{border-color:var(--accent);background:var(--head)}
+.drop h3{margin:0;font-size:14px}
+.drop .hint{color:var(--sub);font-size:12px;margin:0}
+.drop .btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto}
+.status{font-size:13px;padding:6px 8px;border-radius:6px;word-break:break-all}
+.status.ok{background:var(--ok-bg);color:var(--ok)}
+.status.bad{background:var(--bad-bg);color:var(--bad)}
+.status.wait{color:var(--sub)}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:6px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700;padding:9px 18px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.muted{color:var(--sub);font-size:12px}
+details.settings summary{cursor:pointer;font-weight:700}
+.set-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:12px 0}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:13px}
+input[type=number],input[type=month],input[type=text],select{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{border:1px solid var(--line);padding:5px 8px;text-align:left;white-space:nowrap}
+th{background:var(--head);font-weight:700}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.sub td{font-weight:700;background:var(--head)}
+td.over{background:var(--over)} td.under{background:var(--under)}
+.tbl{overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:8px}
+.tbl table{border:0} .tbl th{position:sticky;top:0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.stat .k{font-size:12px;color:var(--sub)} .stat .v{font-size:20px;font-weight:700}
+.stat.bad .v{color:var(--bad)} .stat.ok .v{color:var(--ok)} .stat.warn .v{color:var(--warn)}
+.alias-tbl input{width:100%}
+.hidden{display:none}
+h4{margin:18px 0 8px;font-size:14px}
+.msg{padding:10px 12px;border-radius:8px;margin:8px 0}
+.msg.bad{background:var(--bad-bg);color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>월간 인시 통합 도구</h1>
+  <p class="lead">출고계획현황·전체출고현황·세부현황(순번별 파일)을 넣으면 순번으로 자동 매칭하고, 공장·구분·작업장별 인시와 ±기준 저해품목을 정리한 엑셀을 만들어 줍니다. 넣은 파일은 서버로 전송되지 않고, 모든 처리가 지금 쓰는 PC의 브라우저 안에서만 이루어집니다.</p>
+
+  <div class="card">
+    <div class="step"><span class="n">1</span>파일 넣기</div>
+    <div class="grid3">
+      <div class="drop" id="dz-plan">
+        <h3>출고계획현황 <span class="muted">(xlsx 1개)</span></h3>
+        <p class="hint">계획/비계획/NRTS/폐품 구분이 있는 파일</p>
+        <div class="status wait" id="st-plan">아직 없음</div>
+        <div class="btns"><button data-pick="plan">파일 선택</button></div>
+      </div>
+      <div class="drop" id="dz-master">
+        <h3>전체출고현황 <span class="muted">(xlsx 1개)</span></h3>
+        <p class="hint">순번·지시서번호·공장·작업장(=주작업장)이 있는 파일</p>
+        <div class="status wait" id="st-master">아직 없음</div>
+        <div class="btns"><button data-pick="master">파일 선택</button></div>
+      </div>
+      <div class="drop" id="dz-detail">
+        <h3>세부현황 <span class="muted">(여러 개)</span></h3>
+        <p class="hint">파일 이름 = 순번 (예: <b>123.xlsx</b>). 폴더째 끌어다 놓아도 됩니다.</p>
+        <div class="status wait" id="st-detail">아직 없음</div>
+        <div class="btns"><button data-pick="detail">파일 선택</button><button data-pick="detailDir">폴더 선택</button><button id="clear-detail">비우기</button></div>
+      </div>
+    </div>
+    <input type="file" id="in-plan" accept=".xlsx,.xls,.cell" class="hidden">
+    <input type="file" id="in-master" accept=".xlsx,.xls,.cell" class="hidden">
+    <input type="file" id="in-detail" accept=".xlsx,.xls,.cell" multiple class="hidden">
+    <input type="file" id="in-detailDir" webkitdirectory multiple class="hidden">
+    <div class="row" style="margin-top:12px">
+      <button id="demo">예시 데이터로 체험하기</button>
+      <button id="sample-zip">예시 파일 내려받기 (양식 참고용 zip)</button>
+      <span class="muted">실제 파일 대신 가상의 데이터로 전체 흐름을 볼 수 있습니다.</span>
+    </div>
+
+    <details class="settings" style="margin-top:16px">
+      <summary>설정 (판정 기준 · 열 이름)</summary>
+      <div class="set-grid">
+        <label class="f">분석 월<input type="month" id="opt-month"></label>
+        <label class="f">저해 판정 기준 (±%)<input type="number" id="opt-th" min="0" step="0.5" value="10"></label>
+        <label class="f">출고계획현황에 없는 품목
+          <select id="opt-missing"><option value="미분류">미분류로 표시 (경고)</option><option value="비계획">비계획으로 간주</option></select></label>
+        <label class="f">계획 작업장 비율에 PBL 포함
+          <select id="opt-pblratio"><option value="no">제외</option><option value="yes">포함</option></select></label>
+      </div>
+      <p class="muted">아래는 파일에서 각 항목을 찾을 때 쓰는 열 이름입니다. 실제 파일의 머리글이 다르면 쉼표로 추가해 주세요. 띄어쓰기·괄호는 무시하고 비교하며, 설정은 이 브라우저에 기억됩니다.</p>
+      <div class="tbl" style="max-height:none"><table class="alias-tbl" id="alias-tbl"></table></div>
+      <div class="row" style="margin-top:8px"><button id="alias-reset">열 이름 기본값으로</button></div>
+    </details>
+  </div>
+
+  <div class="card">
+    <div class="step"><span class="n">2</span>통합 실행 · 매칭 확인</div>
+    <div class="row"><button class="primary" id="run" disabled>통합 실행</button><span class="muted" id="run-hint">전체출고현황과 세부현황을 넣으면 실행할 수 있습니다.</span></div>
+    <div id="match-area"></div>
+  </div>
+
+  <div class="card hidden" id="result-card">
+    <div class="step"><span class="n">3</span>결과 확인 · 엑셀 받기</div>
+    <div class="row" style="margin-bottom:12px"><button class="primary" id="download">엑셀 내려받기</button><span class="muted" id="dl-name"></span></div>
+    <div id="result-area"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =========================================================
+   1. ZIP / DEFLATE (외부 라이브러리 없이 xlsx 읽기·쓰기)
+   ========================================================= */
+const LBASE=[3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+const LEXT=[0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+const DBASE=[1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+const DEXT=[0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+const CLORDER=[16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+let FIXED=null;
+function inflateRaw(src,hint){
+  let pos=0,bb=0,bc=0,ol=0,out=new Uint8Array(Math.max(hint||0,src.length*4,1024));
+  const need=n=>{if(ol+n>out.length){const t=new Uint8Array(Math.max(out.length*2,ol+n));t.set(out.subarray(0,ol));out=t;}};
+  const bits=n=>{while(bc<n){if(pos>=src.length)throw new Error('압축 데이터가 잘렸습니다');bb|=src[pos++]<<bc;bc+=8;}const v=bb&((1<<n)-1);bb>>>=n;bc-=n;return v;};
+  const huff=lens=>{const count=new Uint16Array(16),offs=new Uint16Array(16),sym=new Uint16Array(lens.length);
+    for(let i=0;i<lens.length;i++)count[lens[i]]++;count[0]=0;
+    for(let i=1;i<16;i++)offs[i]=offs[i-1]+count[i-1];
+    for(let i=0;i<lens.length;i++)if(lens[i])sym[offs[lens[i]]++]=i;return{count,sym};};
+  const dec=h=>{let code=0,first=0,index=0;for(let len=1;len<16;len++){code|=bits(1);const c=h.count[len];
+    if(code-c<first)return h.sym[index+(code-first)];index+=c;first+=c;first<<=1;code<<=1;}throw new Error('압축 코드 오류');};
+  let fin;
+  do{
+    fin=bits(1);const type=bits(2);
+    if(type===0){bb=0;bc=0;const len=src[pos]|(src[pos+1]<<8);pos+=4;need(len);out.set(src.subarray(pos,pos+len),ol);ol+=len;pos+=len;continue;}
+    let L,D;
+    if(type===1){
+      if(!FIXED){const l=new Uint8Array(288);l.fill(8,0,144);l.fill(9,144,256);l.fill(7,256,280);l.fill(8,280,288);FIXED=[huff(l),huff(new Uint8Array(30).fill(5))];}
+      [L,D]=FIXED;
+    }else if(type===2){
+      const hlit=bits(5)+257,hdist=bits(5)+1,hclen=bits(4)+4,cl=new Uint8Array(19);
+      for(let i=0;i<hclen;i++)cl[CLORDER[i]]=bits(3);
+      const ch=huff(cl),lens=new Uint8Array(hlit+hdist);let i=0;
+      while(i<hlit+hdist){const s=dec(ch);
+        if(s<16){lens[i++]=s;continue;}
+        let rep,val=0;
+        if(s===16){if(!i)throw new Error('압축 길이 오류');val=lens[i-1];rep=3+bits(2);}
+        else if(s===17)rep=3+bits(3);else rep=11+bits(7);
+        if(i+rep>hlit+hdist)throw new Error('압축 길이 오류');lens.fill(val,i,i+rep);i+=rep;}
+      L=huff(lens.subarray(0,hlit));D=huff(lens.subarray(hlit));
+    }else throw new Error('압축 블록 오류');
+    for(;;){let s=dec(L);
+      if(s<256){need(1);out[ol++]=s;}
+      else if(s===256)break;
+      else{s-=257;if(s>=29)throw new Error('압축 길이 오류');
+        const len=LBASE[s]+bits(LEXT[s]),ds=dec(D);if(ds>=30)throw new Error('압축 거리 오류');
+        const dist=DBASE[ds]+bits(DEXT[ds]);if(dist>ol)throw new Error('압축 거리 오류');
+        need(len);for(let k=0;k<len;k++){out[ol]=out[ol-dist];ol++;}}}
+  }while(!fin);
+  return out.subarray(0,ol);
+}
+const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0;}return t;})();
+function crc32(b){let c=0xFFFFFFFF;for(let i=0;i<b.length;i++)c=CRC_T[(c^b[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0;}
+function concatBytes(arr){const n=arr.reduce((a,b)=>a+b.length,0),o=new Uint8Array(n);let p=0;for(const a of arr){o.set(a,p);p+=a.length;}return o;}
+const ENC=new TextEncoder(),DEC=new TextDecoder();
+function makeZip(files){
+  const parts=[],central=[];let off=0;const d0=new Date();
+  const dt=(d0.getHours()<<11)|(d0.getMinutes()<<5)|(d0.getSeconds()>>1),dd=((d0.getFullYear()-1980)<<9)|((d0.getMonth()+1)<<5)|d0.getDate();
+  for(const f of files){
+    const nm=ENC.encode(f.name),d=typeof f.data==='string'?ENC.encode(f.data):f.data,crc=crc32(d);
+    const lh=new DataView(new ArrayBuffer(30));
+    lh.setUint32(0,0x04034b50,true);lh.setUint16(4,20,true);lh.setUint16(6,0x0800,true);lh.setUint16(8,0,true);
+    lh.setUint16(10,dt,true);lh.setUint16(12,dd,true);lh.setUint32(14,crc,true);lh.setUint32(18,d.length,true);lh.setUint32(22,d.length,true);
+    lh.setUint16(26,nm.length,true);lh.setUint16(28,0,true);
+    parts.push(new Uint8Array(lh.buffer),nm,d);
+    const ch=new DataView(new ArrayBuffer(46));
+    ch.setUint32(0,0x02014b50,true);ch.setUint16(4,20,true);ch.setUint16(6,20,true);ch.setUint16(8,0x0800,true);ch.setUint16(10,0,true);
+    ch.setUint16(12,dt,true);ch.setUint16(14,dd,true);ch.setUint32(16,crc,true);ch.setUint32(20,d.length,true);ch.setUint32(24,d.length,true);
+    ch.setUint16(28,nm.length,true);ch.setUint32(42,off,true);
+    central.push(new Uint8Array(ch.buffer),nm);
+    off+=30+nm.length+d.length;
+  }
+  const cds=central.reduce((a,b)=>a+b.length,0),e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cds,true);e.setUint32(16,off,true);
+  return concatBytes([...parts,...central,new Uint8Array(e.buffer)]);
+}
+function readZip(buf){
+  const u=buf instanceof Uint8Array?buf:new Uint8Array(buf),v=new DataView(u.buffer,u.byteOffset,u.byteLength);
+  if(u.length>=4&&u[0]===0xD0&&u[1]===0xCF&&u[2]===0x11&&u[3]===0xE0)throw new Error('OLE');
+  let e=-1;for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--){if(v.getUint32(i,true)===0x06054b50){e=i;break;}}
+  if(e<0)throw new Error('xlsx(zip) 형식이 아닙니다');
+  const n=v.getUint16(e+10,true);let p=v.getUint32(e+16,true);const files={};
+  for(let k=0;k<n;k++){
+    if(v.getUint32(p,true)!==0x02014b50)throw new Error('zip 목차 오류');
+    const method=v.getUint16(p+10,true),cs=v.getUint32(p+20,true),us=v.getUint32(p+24,true),nl=v.getUint16(p+28,true),el=v.getUint16(p+30,true),cl=v.getUint16(p+32,true),lo=v.getUint32(p+42,true);
+    const name=DEC.decode(u.subarray(p+46,p+46+nl));p+=46+nl+el+cl;
+    const ds=lo+30+v.getUint16(lo+26,true)+v.getUint16(lo+28,true);
+    files[name.toLowerCase()]={method,cs,us,ds};
+  }
+  return{get(name){const f=files[name.toLowerCase()];if(!f)return null;const raw=u.subarray(f.ds,f.ds+f.cs);
+    if(f.method===0)return raw;if(f.method===8)return inflateRaw(raw,f.us);throw new Error('지원하지 않는 압축 방식');}};
+}
+
+/* =========================================================
+   2. XLSX 읽기 (첫 번째 시트 → 2차원 배열)
+   ========================================================= */
+function xmlDecode(s){return s.replace(/&(#x[0-9a-f]+|#\d+|lt|gt|amp|quot|apos);/gi,(m,g)=>{g=g.toLowerCase();
+  if(g[0]==='#')return String.fromCodePoint(g[1]==='x'?parseInt(g.slice(2),16):parseInt(g.slice(1),10));
+  return{lt:'<',gt:'>',amp:'&',quot:'"',apos:"'"}[g];}).replace(/_x([0-9A-Fa-f]{4})_/g,(m,h)=>{const c=parseInt(h,16);return c===13?'':String.fromCharCode(c);});}
+function eachEl(xml,tag,cb){
+  const re=new RegExp('<((?:\\w+:)?'+tag+')(?=[\\s/>])([^>]*?)(/?)>','g');let m;
+  while((m=re.exec(xml))){
+    if(m[3]){cb(m[2],'');continue;}
+    const close='</'+m[1]+'>',end=xml.indexOf(close,re.lastIndex);if(end<0)break;
+    cb(m[2],xml.slice(re.lastIndex,end));re.lastIndex=end+close.length;
+  }
+}
+function attr(s,n){const m=new RegExp('(?:^|\\s)'+n+'="([^"]*)"').exec(s);return m?xmlDecode(m[1]):null;}
+function textOf(xml){xml=xml.replace(/<(?:\w+:)?rPh\b[\s\S]*?<\/(?:\w+:)?rPh>/g,'');let s='';const re=/<(?:\w+:)?t(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?t>/g;let m;while((m=re.exec(xml)))s+=m[1];return xmlDecode(s);}
+function colIndex(ref){let n=0;for(const ch of ref){const c=ch.charCodeAt(0);if(c<65||c>90)break;n=n*26+(c-64);}return n-1;}
+function parseXlsx(buf){
+  const z=readZip(buf),txt=p=>{const b=z.get(p);return b?DEC.decode(b):null;};
+  const wb=txt('xl/workbook.xml');if(!wb)throw new Error('엑셀 통합문서 구조를 찾지 못했습니다');
+  let rid=null;eachEl(wb,'sheet',a=>{if(rid==null){const m=/(?:^|\s)(?:\w+:)?id="([^"]*)"/.exec(a);rid=m?m[1]:'';}});
+  let target='xl/worksheets/sheet1.xml';
+  const rels=txt('xl/_rels/workbook.xml.rels');
+  if(rels&&rid)eachEl(rels,'Relationship',a=>{if(attr(a,'Id')===rid){const t=attr(a,'Target');target=t.startsWith('/')?t.slice(1):'xl/'+t.replace(/^\.\//,'');}});
+  const ss=[];const sst=txt('xl/sharedStrings.xml');if(sst)eachEl(sst,'si',(a,inner)=>ss.push(textOf(inner)));
+  const sh=txt(target);if(!sh)throw new Error('시트를 찾지 못했습니다');
+  const rows=[];let autoR=0;
+  eachEl(sh,'row',(ra,inner)=>{
+    const rn=attr(ra,'r');const r=rn?parseInt(rn,10)-1:autoR;autoR=r+1;
+    const row=rows[r]=rows[r]||[];let autoC=0;
+    eachEl(inner,'c',(ca,ci)=>{
+      const ref=attr(ca,'r');const c=ref?colIndex(ref):autoC;autoC=c+1;
+      const t=attr(ca,'t');const vm=/<(?:\w+:)?v(?:\s[^>]*)?>([\s\S]*?)<\/(?:\w+:)?v>/.exec(ci);const v=vm?xmlDecode(vm[1]):null;
+      let val='';
+      if(t==='s')val=v==null?'':(ss[parseInt(v,10)]??'');
+      else if(t==='inlineStr')val=textOf(ci);
+      else if(t==='str'||t==='e')val=v??'';
+      else if(t==='b')val=v==='1';
+      else if(v!=null&&v!==''){const n=Number(v);val=isFinite(n)?n:v;}
+      row[c]=val;
+    });
+  });
+  const out=[];for(let i=0;i<rows.length;i++)out.push(Array.from(rows[i]||[],x=>x??''));
+  return out;
+}
+
+/* =========================================================
+   3. XLSX 쓰기 (여러 시트, 서식 포함)
+   ========================================================= */
+function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26);}return s;}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'');}
+const FMT={gen:0,int:3,n1:164,pct:165};
+const FILLS={none:0,head:2,over:3,under:4,sub:5,total:6};
+const FILL_RGB=['','','FFD9E1F2','FFFFC7CE','FFDDEBF7','FFF2F2F2','FFFFF2CC'];
+function makeXlsx(sheets){
+  const styles=['gen|0|none|0'],sIdx={'gen|0|none|0':0};
+  const styleOf=c=>{const k=[c.f||'gen',(c.b||c.h)?1:0,c.h?'head':(c.fill||'none'),c.bd?1:0].join('|');if(!(k in sIdx)){sIdx[k]=styles.length;styles.push(k);}return sIdx[k];};
+  const files=[],defNames=[];
+  sheets.forEach((sh,si)=>{
+    const rows=sh.rows,ncol=Math.max(1,...rows.map(r=>r.length));
+    const widths=new Array(ncol).fill(6);
+    rows.forEach(r=>r.forEach((c,ci)=>{if(c==null||c.v==null)return;const s=fmtCell(c);let w=0;for(const ch of s)w+=ch.charCodeAt(0)>0x2e80?2:1;widths[ci]=Math.max(widths[ci],Math.min(w+2,60));}));
+    let x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">';
+    x+='<sheetViews><sheetView workbookViewId="0"'+(si===0?' tabSelected="1"':'')+'>';
+    if(sh.freeze)x+='<pane ySplit="'+sh.freeze+'" topLeftCell="A'+(sh.freeze+1)+'" activePane="bottomLeft" state="frozen"/>';
+    x+='</sheetView></sheetViews><cols>'+widths.map((w,i)=>'<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>').join('')+'</cols><sheetData>';
+    rows.forEach((row,ri)=>{
+      x+='<row r="'+(ri+1)+'">';
+      row.forEach((c,ci)=>{
+        if(c==null)return;const ref=colName(ci)+(ri+1),s=styleOf(c),sa=s?' s="'+s+'"':'';
+        if(c.v==null||c.v==='')x+='<c r="'+ref+'"'+sa+'/>';
+        else if(typeof c.v==='number'&&isFinite(c.v))x+='<c r="'+ref+'"'+sa+'><v>'+(Math.round(c.v*1e6)/1e6)+'</v></c>';
+        else x+='<c r="'+ref+'"'+sa+' t="inlineStr"><is><t xml:space="preserve">'+esc(c.v)+'</t></is></c>';
+      });
+      x+='</row>';
+    });
+    x+='</sheetData>';
+    if(sh.filter&&rows.length>1){const ref='A1:'+colName(ncol-1)+rows.length;x+='<autoFilter ref="'+ref+'"/>';
+      defNames.push('<definedName name="_xlnm._FilterDatabase" localSheetId="'+si+'" hidden="1">\''+esc(sh.name.replace(/'/g,"''"))+'\'!$A$1:$'+colName(ncol-1)+'$'+rows.length+'</definedName>');}
+    x+='</worksheet>';
+    files.push({name:'xl/worksheets/sheet'+(si+1)+'.xml',data:x});
+  });
+  const n=sheets.length;
+  const fills='<fills count="'+FILL_RGB.length+'"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>'+
+    FILL_RGB.slice(2).map(c=>'<fill><patternFill patternType="solid"><fgColor rgb="'+c+'"/><bgColor indexed="64"/></patternFill></fill>').join('')+'</fills>';
+  const xfs=styles.map(k=>{const[f,b,fill,bd]=k.split('|');const nf=FMT[f],fi=FILLS[fill];
+    return '<xf numFmtId="'+nf+'" fontId="'+b+'" fillId="'+fi+'" borderId="'+bd+'" xfId="0"'+(nf?' applyNumberFormat="1"':'')+(b==='1'?' applyFont="1"':'')+(fi?' applyFill="1"':'')+(bd==='1'?' applyBorder="1"':'')+(f==='gen'&&fill==='head'?' applyAlignment="1"><alignment horizontal="center" vertical="center" wrapText="1"/></xf>':'/>');}).join('');
+  const side='<color rgb="FFBFBFBF"/>';
+  const stylesXml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<numFmts count="2"><numFmt numFmtId="164" formatCode="#,##0.0"/><numFmt numFmtId="165" formatCode="0.0%"/></numFmts>'+
+    '<fonts count="2"><font><sz val="10"/><name val="맑은 고딕"/><family val="3"/><charset val="129"/></font><font><b/><sz val="10"/><name val="맑은 고딕"/><family val="3"/><charset val="129"/></font></fonts>'+
+    fills+'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin">'+side+'</left><right style="thin">'+side+'</right><top style="thin">'+side+'</top><bottom style="thin">'+side+'</bottom><diagonal/></border></borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="'+styles.length+'">'+xfs+'</cellXfs>'+
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><bookViews><workbookView/></bookViews><sheets>'+
+    sheets.map((s,i)=>'<sheet name="'+esc(s.name)+'" sheetId="'+(i+1)+'" r:id="rId'+(i+1)+'"/>').join('')+'</sheets>'+(defNames.length?'<definedNames>'+defNames.join('')+'</definedNames>':'')+'</workbook>';
+  const wbRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
+    sheets.map((s,i)=>'<Relationship Id="rId'+(i+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet'+(i+1)+'.xml"/>').join('')+
+    '<Relationship Id="rId'+(n+1)+'" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>';
+  const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>'+
+    '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>'+
+    sheets.map((s,i)=>'<Override PartName="/xl/worksheets/sheet'+(i+1)+'.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('')+'</Types>';
+  const rootRels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+  return makeZip([{name:'[Content_Types].xml',data:ct},{name:'_rels/.rels',data:rootRels},{name:'xl/workbook.xml',data:wb},{name:'xl/_rels/workbook.xml.rels',data:wbRels},{name:'xl/styles.xml',data:stylesXml},...files]);
+}
+/* 셀 도우미 */
+const H=v=>({v,h:true,bd:true});
+const T=(v,o)=>({v:v==null?'':v,bd:true,...o});
+const N=(v,o)=>({v:v==null||!isFinite(v)?null:v,f:'n1',bd:true,...o});
+const I=(v,o)=>({v:v==null||!isFinite(v)?null:v,f:'int',bd:true,...o});
+const P=(v,o)=>({v:v==null||!isFinite(v)?null:v,f:'pct',bd:true,...o});
+function fmtCell(c){if(c==null||c.v==null||c.v==='')return'';const v=c.v;
+  if(typeof v==='number'){if(c.f==='pct')return(v*100).toFixed(1)+'%';if(c.f==='n1')return v.toLocaleString('ko-KR',{minimumFractionDigits:1,maximumFractionDigits:1});if(c.f==='int')return Math.round(v).toLocaleString('ko-KR');return String(v);}
+  return String(v);}
+
+/* =========================================================
+   4. 열 이름 설정
+   ========================================================= */
+const DEF_ALIASES={
+  master:{_label:'전체출고현황',seq:['순번','연번'],order:['지시서번호','지시서','지시번호'],stock:['재고번호','NIIN'],job:['작명','작명번호','작업명령번호'],name:['품명','품목명','품목'],plant:['공장','공장명','정비공장'],shop:['작업장','주작업장','작업장명'],qty:['출고수량','수량','출고수'],type:['출고구분','계획구분'],pbl:['PBL','PBL여부']},
+  plan:{_label:'출고계획현황',order:['지시서번호','지시서','지시번호'],stock:['재고번호','NIIN'],type:['출고구분','계획구분','계획여부','구분']},
+  detail:{_label:'세부현황',proc:['공정명','공정','작업공정','작업내용'],shop:['작업장','작업장명','수행작업장'],std:['표준인시','표준공수'],act:['소비인시','사용인시','실적인시','투입인시','실인시'],pbl:['PBL','PBL여부','PBL구분'],note:['비고','특기사항']}
+};
+DEF_ALIASES.master._label='전체출고현황';
+const FIELD_LABEL={seq:'순번 (필수)',order:'지시서번호',stock:'재고번호',job:'작명',name:'품명',plant:'공장',shop:'작업장',qty:'출고수량',type:'출고구분',pbl:'PBL 표시',proc:'공정',std:'표준인시 (필수)',act:'소비인시 (필수)',note:'비고'};
+const LS_KEY='insi-tool-aliases-v1';
+function loadAliases(){let saved=null;try{saved=JSON.parse(localStorage.getItem(LS_KEY)||'null');}catch(e){}
+  const a=JSON.parse(JSON.stringify(DEF_ALIASES));
+  if(saved)for(const g in a)for(const k in a[g])if(k!=='_label'&&saved[g]&&Array.isArray(saved[g][k]))a[g][k]=saved[g][k];
+  return a;}
+function saveAliases(a){try{localStorage.setItem(LS_KEY,JSON.stringify(a));}catch(e){}}
+let ALIASES=loadAliases();
+
+/* =========================================================
+   5. 분석 로직
+   ========================================================= */
+const norm=s=>String(s??'').toLowerCase().replace(/[\s()\[\]{}\/._\-:：·,]/g,'');
+const str=x=>String(x??'').trim();
+const num=x=>{if(typeof x==='number')return isFinite(x)?x:0;const n=parseFloat(String(x??'').replace(/,/g,''));return isFinite(n)?n:0;};
+const toInt=x=>{if(typeof x==='number')return Number.isInteger(x)&&x>0?x:null;const s=str(x);return /^\d+$/.test(s)?parseInt(s,10):null;};
+const TOTAL=new Set(['합계','소계','계','총계','total','합']);
+const PBL_YES=new Set(['pbl','y','yes','o','○','●','◎','v','✓','✔','1','예','해당','true']);
+const isPbl=x=>{if(x===true)return true;const n=norm(x);return!!n&&(PBL_YES.has(n)||n.includes('pbl'));};
+const TYPE_ORDER=['계획','비계획','NRTS','폐품'];
+function normType(t){const s=str(t),n=norm(s);if(!n)return'미분류';if(n.includes('비계획'))return'비계획';if(n.includes('계획'))return'계획';if(n.includes('nrts'))return'NRTS';if(n.includes('폐품')||n.includes('폐기'))return'폐품';return s;}
+const typeSort=(a,b)=>{const ia=TYPE_ORDER.indexOf(a),ib=TYPE_ORDER.indexOf(b);if(a==='미분류')return 1;if(b==='미분류')return -1;
+  return(ia<0?99:ia)-(ib<0?99:ib)||a.localeCompare(b,'ko');};
+const natSort=(a,b)=>String(a).localeCompare(String(b),'ko',{numeric:true});
+const fieldsOf=g=>Object.entries(ALIASES[g]).filter(([k])=>k!=='_label').map(([key,aliases])=>({key,aliases}));
+function mapHeader(row,fields){
+  const cells=(row||[]).map(norm),used=new Set(),map={};
+  for(const f of fields){const al=f.aliases.map(norm).filter(Boolean);
+    for(let i=0;i<cells.length;i++)if(!used.has(i)&&cells[i]&&al.includes(cells[i])){map[f.key]=i;used.add(i);break;}}
+  for(const f of fields){if(f.key in map)continue;const al=f.aliases.map(norm).filter(a=>a.length>=2).sort((a,b)=>b.length-a.length);
+    outer:for(const a of al)for(let i=0;i<cells.length;i++)if(!used.has(i)&&cells[i]&&cells[i].includes(a)){map[f.key]=i;used.add(i);break outer;}}
+  return map;}
+function findHeader(rows,fields,required){let best=null;
+  for(let r=0;r<Math.min(rows.length,30);r++){const m=mapHeader(rows[r],fields),n=Object.keys(m).length;
+    if(required.every(k=>k in m)&&(!best||n>best.n))best={r,map:m,n};}
+  return best;}
+const dev=(std,act)=>std>0?(act-std)/std:null;
+function judge(d,th){if(d==null)return'판정불가';if(d>th+1e-9)return'저해(초과)';if(d<-th-1e-9)return'저해(과소)';return'정상';}
+function seqFromName(name){const base=name.replace(/\.[^.]+$/,'').trim();return /^\d+$/.test(base)?parseInt(base,10):null;}
+
+function analyze(input,opt){
+  const th=opt.threshold/100,errors=[],warns=[];
+  const err=(file,seq,msg)=>errors.push({kind:'오류',file,seq,msg}),warn=(file,seq,msg)=>warns.push({kind:'경고',file,seq,msg});
+  // 전체출고현황
+  const M=input.master;const mh=findHeader(M.rows,fieldsOf('master'),['seq']);
+  if(!mh)throw new Error('전체출고현황에서 머리글(순번 열)을 찾지 못했습니다. [설정 → 열 이름]에서 순번 열 이름을 추가해 주세요.');
+  const g=(row,k,map)=>map[k]==null?'':(row[map[k]]??'');
+  const items=new Map();
+  for(let r=mh.r+1;r<M.rows.length;r++){const row=M.rows[r]||[];const seq=toInt(g(row,'seq',mh.map));if(seq==null)continue;
+    if(items.has(seq)){warn(M.name,seq,'전체출고현황에 같은 순번이 두 번 이상 있습니다 (첫 행만 사용)');continue;}
+    const q=g(row,'qty',mh.map);
+    items.set(seq,{seq,order:str(g(row,'order',mh.map)),stock:str(g(row,'stock',mh.map)),job:str(g(row,'job',mh.map)),name:str(g(row,'name',mh.map)),
+      plant:str(g(row,'plant',mh.map))||'(공장 미기재)',shop:str(g(row,'shop',mh.map)),qty:str(q)===''?null:num(q),typeRaw:str(g(row,'type',mh.map)),
+      pbl:isPbl(g(row,'pbl',mh.map)),procs:[],file:null,notes:[],std:null,act:null,dev:null,judge:'세부현황 없음'});}
+  if(!items.size)throw new Error('전체출고현황에서 순번이 있는 행을 찾지 못했습니다.');
+  if(mh.map.shop==null)warn(M.name,'','전체출고현황에서 작업장(주작업장) 열을 찾지 못해 주/보조작업장을 구분할 수 없습니다');
+  if(mh.map.plant==null)warn(M.name,'','전체출고현황에서 공장 열을 찾지 못했습니다');
+  // 출고계획현황
+  const byOrder=new Map(),byStock=new Map();let planOk=false;
+  if(input.plan&&input.plan.rows){
+    const ph=findHeader(input.plan.rows,fieldsOf('plan'),['type']);
+    if(!ph||(ph.map.order==null&&ph.map.stock==null))warn(input.plan.name,'','출고계획현황에서 구분 열과 지시서번호/재고번호 열을 찾지 못해 사용하지 않았습니다');
+    else{planOk=true;
+      for(let r=ph.r+1;r<input.plan.rows.length;r++){const row=input.plan.rows[r]||[];const t=str(g(row,'type',ph.map));if(!t)continue;
+        const o=norm(g(row,'order',ph.map)),s=norm(g(row,'stock',ph.map));
+        if(o&&!byOrder.has(o))byOrder.set(o,t);if(s&&!byStock.has(s))byStock.set(s,t);}}
+  }else warn('','','출고계획현황이 없어 전체출고현황의 구분 열(있는 경우)로 분류했습니다');
+  for(const it of items.values()){
+    let t=planOk?(byOrder.get(norm(it.order))??byStock.get(norm(it.stock))):undefined;
+    if(t==null){
+      if(it.typeRaw){t=it.typeRaw;if(planOk)warn('',it.seq,'출고계획현황에서 찾지 못해 전체출고현황의 구분 값을 사용했습니다');}
+      else if(planOk&&opt.missingAs==='비계획')t='비계획';
+      else{t='';if(planOk)warn('',it.seq,'출고계획현황에서 찾지 못했습니다 (미분류)');}
+    }
+    it.type=normType(t);
+  }
+  // 세부현황
+  const used=new Map();
+  for(const d of input.details){
+    if(d.err){err(d.name,'',d.err);continue;}
+    const seq=seqFromName(d.name);
+    if(seq==null){err(d.name,'','파일 이름이 숫자가 아닙니다 (예: 123.xlsx)');continue;}
+    if(used.has(seq)){err(d.name,seq,'같은 순번의 파일이 이미 있습니다 ('+used.get(seq)+' 사용, 이 파일은 제외)');continue;}
+    const it=items.get(seq);
+    if(!it){err(d.name,seq,'전체출고현황에 없는 순번입니다');continue;}
+    const dh=findHeader(d.rows,fieldsOf('detail'),['std','act']);
+    if(!dh){err(d.name,seq,'표준인시/소비인시 열을 찾지 못했습니다 (양식 확인 또는 열 이름 설정 필요)');continue;}
+    used.set(seq,d.name);it.file=d.name;
+    let job='';
+    for(let r=0;r<dh.r&&!job;r++){const row=d.rows[r]||[];
+      for(let c=0;c<row.length;c++){const t=str(row[c]);if(/^작\s*명/.test(t)){const after=t.replace(/^작\s*명\s*(번호)?\s*[:：]?\s*/,'');job=after||str(row.slice(c+1).find(x=>str(x))??'');break;}}}
+    const m=dh.map;
+    for(let r=dh.r+1;r<d.rows.length;r++){const row=d.rows[r]||[];
+      if(row.some(x=>TOTAL.has(norm(x))))continue;
+      const proc=str(g(row,'proc',m)),shop=str(g(row,'shop',m)),sv=g(row,'std',m),av=g(row,'act',m);
+      if(!proc&&!shop&&str(sv)===''&&str(av)==='')continue;
+      const std=num(sv),act=num(av);if(!proc&&std===0&&act===0)continue;
+      if(isPbl(g(row,'pbl',m)))it.pbl=true;
+      const note=str(g(row,'note',m));if(note&&!it.notes.includes(note))it.notes.push(note);
+      const role=!it.shop?'미분류':!shop?'미기재':norm(shop)===norm(it.shop)?'주':'보조';
+      it.procs.push({proc,shop,role,std,act,note,dev:dev(std,act),judge:judge(dev(std,act),th)});
+    }
+    if(job&&it.job&&norm(job)!==norm(it.job))warn(d.name,seq,'작명 불일치: 파일 "'+job+'" / 전체출고현황 "'+it.job+'" (순번 저장이 맞는지 확인)');
+    if(!it.job&&job)it.job=job;
+    if(!it.procs.length)warn(d.name,seq,'공정 행이 없습니다');
+    it.std=it.procs.reduce((a,p)=>a+p.std,0);it.act=it.procs.reduce((a,p)=>a+p.act,0);
+    it.dev=dev(it.std,it.act);it.judge=judge(it.dev,th);
+  }
+  for(const it of items.values())if(!it.file)err('',it.seq,'세부현황 파일이 없습니다 ('+it.seq+'.xlsx)');
+  const bySeq=(a,b)=>(a.seq===''?0:a.seq)-(b.seq===''?0:b.seq);
+  errors.sort(bySeq);warns.sort(bySeq);
+  return{items:[...items.values()].sort((a,b)=>a.seq-b.seq),errors,warns,opt,planOk,inputCount:input.details.length};
+}
+
+/* =========================================================
+   6. 결과 시트 만들기
+   ========================================================= */
+function sum(arr,f){let s=0;for(const x of arr){const v=f(x);if(v!=null&&isFinite(v))s+=v;}return s;}
+function judgeCell(j){return T(j,j==='저해(초과)'?{fill:'over',b:true}:j==='저해(과소)'?{fill:'under',b:true}:{});}
+function devCell(d,th){return P(d,d==null?{}:d>th+1e-9?{fill:'over'}:d<-th-1e-9?{fill:'under'}:{});}
+function buildSheets(R){
+  const th=R.opt.threshold/100,items=R.items,matched=items.filter(i=>i.file);
+  const plants=[...new Set(items.map(i=>i.plant))].sort(natSort);
+  const types=[...new Set(items.map(i=>i.type))].sort(typeSort);
+  const planAll=items.filter(i=>i.type==='계획');
+  const planNP=planAll.filter(i=>!i.pbl),planPbl=planAll.filter(i=>i.pbl);
+  const bad=planNP.filter(i=>i.file&&i.judge.startsWith('저해')).sort((a,b)=>Math.abs(b.dev)-Math.abs(a.dev));
+  const sheets=[];
+  // ① 전체현황
+  {const rows=[[H('공장'),H('출고구분'),H('출고건수'),H('출고수량'),H('세부현황 매칭'),H('표준인시'),H('사용인시'),H('차이(사용-표준)'),H('편차율')]];
+    const line=(label1,label2,set,o)=>{const m=set.filter(i=>i.file),s=sum(m,i=>i.std),a=sum(m,i=>i.act);
+      rows.push([T(label1,o),T(label2,o),I(set.length,o),I(set.some(i=>i.qty!=null)?sum(set,i=>i.qty):null,o),T(m.length+' / '+set.length,o),N(s,o),N(a,o),N(a-s,o),P(dev(s,a),o)]);};
+    for(const p of plants){const ps=items.filter(i=>i.plant===p);
+      for(const t of types){const set=ps.filter(i=>i.type===t);if(set.length)line(p,t,set);}
+      line(p,'소계',ps,{b:true,fill:'sub'});}
+    for(const t of types){const set=items.filter(i=>i.type===t);if(set.length)line('전체',t,set,{fill:'total'});}
+    line('전체','총계',items,{b:true,fill:'total'});
+    sheets.push({name:'①전체현황',rows,freeze:1});}
+  // ② 계획 작업장 비율
+  {const base=R.opt.pblInRatio?planAll:planNP;const set=base.filter(i=>i.file);
+    const rows=[[H('공장'),H('주작업장'),H('품목수'),H('주작업장 사용인시'),H('보조작업장 사용인시'),H('미분류 사용인시'),H('사용인시 합계'),H('주작업장 비율'),H('보조작업장 비율'),H('주작업장 표준인시'),H('보조작업장 표준인시')]];
+    const line=(p,s,arr,o)=>{const procs=arr.flatMap(i=>i.procs);const ma=sum(procs.filter(x=>x.role==='주'),x=>x.act),ba=sum(procs.filter(x=>x.role==='보조'),x=>x.act),oa=sum(procs.filter(x=>x.role!=='주'&&x.role!=='보조'),x=>x.act),tot=ma+ba+oa;
+      rows.push([T(p,o),T(s,o),I(arr.length,o),N(ma,o),N(ba,o),N(oa,o),N(tot,o),P(tot?ma/tot:null,o),P(tot?ba/tot:null,o),N(sum(procs.filter(x=>x.role==='주'),x=>x.std),o),N(sum(procs.filter(x=>x.role==='보조'),x=>x.std),o)]);};
+    for(const p of plants){const ps=set.filter(i=>i.plant===p);if(!ps.length)continue;
+      const shops=[...new Set(ps.map(i=>i.shop||'(미기재)'))].sort(natSort);
+      for(const s of shops)line(p,s,ps.filter(i=>(i.shop||'(미기재)')===s));
+      line(p,'소계',ps,{b:true,fill:'sub'});}
+    line('전체','총계',set,{b:true,fill:'total'});
+    rows.push([]);rows.push([T('※ 계획 품목'+(R.opt.pblInRatio?'(PBL 포함)':'(PBL 제외)')+' 기준. 세부현황 각 공정의 작업장이 전체출고현황의 작업장과 같으면 주작업장, 다르면 보조작업장으로 계산.',{bd:false})]);
+    sheets.push({name:'②계획_작업장비율',rows,freeze:1});}
+  // ③ 계획 품목별 현황
+  const itemHead=[H('순번'),H('공장'),H('주작업장'),H('작명'),H('지시서번호'),H('재고번호'),H('품명'),H('출고수량'),H('표준인시'),H('사용인시'),H('차이'),H('편차율'),H('판정'),H('보조작업장 인시 비율')];
+  const itemRow=i=>{const ba=sum(i.procs.filter(x=>x.role==='보조'),x=>x.act);
+    return[I(i.seq),T(i.plant),T(i.shop),T(i.job),T(i.order),T(i.stock),T(i.name),I(i.qty),N(i.file?i.std:null),N(i.file?i.act:null),N(i.file?i.act-i.std:null),devCell(i.dev,th),judgeCell(i.judge),P(i.file&&i.act?ba/i.act:null)];};
+  sheets.push({name:'③계획_품목별현황',rows:[itemHead,...planNP.map(itemRow)],freeze:1,filter:true});
+  // ④ 저해품목
+  {const rows=[[H('순번'),H('공장'),H('주작업장'),H('작명'),H('품명'),H('표준인시'),H('사용인시'),H('차이'),H('편차율'),H('판정'),H('편차 큰 공정 (상위 3)'),H('비고'),H('사유 (직접 입력)')]];
+    for(const i of bad){const top=i.procs.filter(p=>p.judge.startsWith('저해')).sort((a,b)=>Math.abs(b.act-b.std)-Math.abs(a.act-a.std)).slice(0,3)
+        .map(p=>p.proc+'('+p.shop+') '+(p.dev>0?'+':'')+(p.dev*100).toFixed(0)+'%').join(', ');
+      rows.push([I(i.seq),T(i.plant),T(i.shop),T(i.job),T(i.name),N(i.std),N(i.act),N(i.act-i.std),devCell(i.dev,th),judgeCell(i.judge),T(top),T(i.notes.join(' / ')),T('')]);}
+    sheets.push({name:'④저해품목',rows,freeze:1,filter:true});}
+  // ⑤ 저해품목 공정별 세부
+  {const rows=[[H('순번'),H('작명'),H('품명'),H('공정'),H('작업장'),H('주/보조'),H('표준인시'),H('사용인시'),H('차이'),H('편차율'),H('공정 판정'),H('비고')]];
+    for(const i of bad)for(const p of i.procs)rows.push([I(i.seq),T(i.job),T(i.name),T(p.proc),T(p.shop),T(p.role),N(p.std),N(p.act),N(p.act-p.std),devCell(p.dev,th),judgeCell(p.judge),T(p.note)]);
+    sheets.push({name:'⑤저해_공정별세부',rows,freeze:1,filter:true});}
+  // ⑥ 계획 PBL 현황
+  {const rows=[[H('순번'),H('공장'),H('주작업장'),H('작명'),H('지시서번호'),H('재고번호'),H('품명'),H('출고수량'),H('표준인시'),H('사용인시'),H('차이'),H('편차율'),H('세부현황')]];
+    for(const i of planPbl)rows.push([I(i.seq),T(i.plant),T(i.shop),T(i.job),T(i.order),T(i.stock),T(i.name),I(i.qty),N(i.file?i.std:null),N(i.file?i.act:null),N(i.file?i.act-i.std:null),P(i.dev),T(i.file?'있음':'없음')]);
+    if(planPbl.length){const m=planPbl.filter(i=>i.file),s=sum(m,i=>i.std),a=sum(m,i=>i.act),o={b:true,fill:'total'};
+      rows.push([T('합계',o),T('',o),T('',o),T('',o),T('',o),T('',o),T(planPbl.length+'건',o),I(sum(planPbl,i=>i.qty),o),N(s,o),N(a,o),N(a-s,o),P(dev(s,a),o),T('',o)]);}
+    sheets.push({name:'⑥계획PBL_현황',rows,freeze:1,filter:true});}
+  // ⑦ 통합원자료
+  {const rows=[[H('순번'),H('공장'),H('출고구분'),H('PBL'),H('작명'),H('지시서번호'),H('재고번호'),H('품명'),H('주작업장'),H('공정'),H('작업장'),H('주/보조'),H('표준인시'),H('사용인시'),H('비고'),H('세부현황 파일')]];
+    for(const i of items){if(!i.procs.length){rows.push([I(i.seq),T(i.plant),T(i.type),T(i.pbl?'PBL':''),T(i.job),T(i.order),T(i.stock),T(i.name),T(i.shop),T(''),T(''),T(''),N(null),N(null),T(''),T(i.file||'(없음)')]);continue;}
+      for(const p of i.procs)rows.push([I(i.seq),T(i.plant),T(i.type),T(i.pbl?'PBL':''),T(i.job),T(i.order),T(i.stock),T(i.name),T(i.shop),T(p.proc),T(p.shop),T(p.role),N(p.std),N(p.act),T(p.note),T(i.file)]);}
+    sheets.push({name:'⑦통합원자료',rows,freeze:1,filter:true});}
+  // ⑧ 매칭오류
+  {const rows=[[H('구분'),H('파일명'),H('순번'),H('내용')]];
+    for(const e of[...R.errors,...R.warns])rows.push([T(e.kind,e.kind==='오류'?{fill:'over',b:true}:{}),T(e.file),e.seq===''?T(''):I(e.seq),T(e.msg)]);
+    if(rows.length===1)rows.push([T('없음'),T(''),T(''),T('매칭 오류와 경고가 없습니다')]);
+    sheets.push({name:'⑧매칭오류',rows,freeze:1,filter:true});}
+  // ⑨ 처리정보
+  {const kv=[['분석 월',R.opt.month||''],['생성 시각',new Date().toLocaleString('ko-KR')],['저해 판정 기준','표준인시 대비 ±'+R.opt.threshold+'% 초과 (경계값은 정상)'],
+      ['판정 단위','작명(품목) 합계 기준 / 공정별 편차는 참고 표시'],['분석 대상','출고구분이 "계획"이고 PBL이 아닌 품목 (계획+PBL은 ⑥ 현황만)'],
+      ['작업장 비율 PBL',R.opt.pblInRatio?'포함':'제외'],['출고계획현황에 없는 품목',R.opt.missingAs],
+      ['전체출고현황 품목 수',items.length],['넣은 세부현황 파일 수',R.inputCount],['매칭된 품목 수',matched.length],['오류',R.errors.length],['경고',R.warns.length]];
+    sheets.push({name:'⑨처리정보',rows:[[H('항목'),H('값')],...kv.map(([k,v])=>[T(k,{b:true}),typeof v==='number'?I(v):T(v)])]});}
+  return{sheets,stats:{items:items.length,matched:matched.length,plan:planAll.length,planNP:planNP.length,planPbl:planPbl.length,bad:bad.length,
+    over:bad.filter(i=>i.judge==='저해(초과)').length,under:bad.filter(i=>i.judge==='저해(과소)').length}};
+}
+
+/* =========================================================
+   7. 예시 데이터 생성
+   ========================================================= */
+function demoData(withErrors,count){
+  let seed=20261119;const R=()=>(seed=(seed*1664525+1013904223)>>>0)/4294967296;
+  const pick=a=>a[Math.floor(R()*a.length)],r1=x=>Math.round(x*10)/10;
+  const plants={'1공장':['기관정비','변속기정비','유압정비'],'2공장':['전장정비','계기정비'],'3공장':['차체정비','도장','부품가공']};
+  const names=['엔진 조립체','발전기','유압펌프','변속기','시동모터','냉각펌프','조향장치','제동장치','연료분사기','감속기'];
+  const procs=['분해','세척','검사','부품교환','가공','조립','시험','도장','포장'];
+  const N=count||40,items=[];
+  for(let s=1;s<=N;s++){
+    const plant=pick(Object.keys(plants)),shop=pick(plants[plant]);
+    const u=R(),type=u<.6?'계획':u<.8?'비계획':u<.9?'NRTS':'폐품';
+    const pbl=type==='계획'&&R()<.2;
+    const v=R(),factor=v<.65?1+(R()*.16-.08):v<.83?1+.15+R()*.3:1-.12-R()*.18;
+    const np=3+Math.floor(R()*5),ps=[];
+    const allShops=Object.values(plants).flat();
+    for(let k=0;k<np;k++){const std=r1(2+R()*30);const sh=R()<.7?shop:pick(allShops.filter(x=>x!==shop));
+      ps.push({no:k+1,proc:procs[k%procs.length],shop:sh,std,act:r1(std*(factor+(R()*.1-.05))),note:R()<.12?pick(['부품 대기','재작업','인원 지원','시험 재수행']):''});}
+    items.push({seq:s,order:'D'+String(2500+s).padStart(5,'0'),stock:'5'+String(100000+Math.floor(R()*899999)),job:'J25-'+String(1000+s*7),name:pick(names),plant,shop,qty:1+Math.floor(R()*4),type,pbl,procs:ps});
+  }
+  const master=[['순번','지시서번호','재고번호','작명','품명','공장','작업장','출고수량'],...items.map(i=>[i.seq,i.order,i.stock,i.job,i.name,i.plant,i.shop,i.qty])];
+  const plan=[['지시서번호','재고번호','품명','출고구분'],...items.map(i=>[i.order,i.stock,i.name,i.type])];
+  const detailRows=i=>{const rows=[['작업 세부현황'],['작명',i.job],[],['순서','공정명','작업장','표준인시','소비인시','PBL','비고']];
+    for(const p of i.procs)rows.push([p.no,p.proc,p.shop,p.std,p.act,i.pbl?'PBL':'',p.note]);
+    rows.push(['합계','','',r1(i.procs.reduce((a,p)=>a+p.std,0)),r1(i.procs.reduce((a,p)=>a+p.act,0)),'','']);return rows;};
+  const toX=rows=>makeXlsx([{name:'Sheet1',rows:rows.map(r=>r.map(v=>({v})))}]);
+  const details=[];
+  for(const i of items){
+    if(withErrors&&i.seq===7)continue;
+    details.push({name:(withErrors&&i.seq===12?'세부_12':String(i.seq))+'.xlsx',bytes:toX(detailRows(i))});
+    if(withErrors&&i.seq===17)details.push({name:'017.xlsx',bytes:toX(detailRows(i))});
+  }
+  if(withErrors)details.push({name:'41.xlsx',bytes:toX(detailRows(items[0]))});
+  return{master:toX(master),plan:toX(plan),details,truth:items};
+}
+
+/* =========================================================
+   8. 화면
+   ========================================================= */
+const $=id=>document.getElementById(id);
+const S={plan:null,master:null,details:[],result:null,built:null};
+function extOf(n){const m=/\.([^.]+)$/.exec(n);return m?m[1].toLowerCase():'';}
+function badExtMsg(n){const e=extOf(n);
+  if(e==='cell')return'한셀(.cell) 형식은 읽을 수 없습니다. 한셀에서 xlsx로 저장해 주세요';
+  if(e==='xls')return'구버전 엑셀(.xls)은 읽을 수 없습니다. xlsx로 저장해 주세요';
+  if(e!=='xlsx'&&e!=='xlsm')return'xlsx 파일이 아닙니다 (.'+(e||'확장자 없음')+')';return null;}
+function readBytes(name,bytes){const b=badExtMsg(name);if(b)return{name,err:b};
+  try{return{name,rows:parseXlsx(bytes)};}catch(e){return{name,err:e.message==='OLE'?'구버전 엑셀/한셀 형식입니다. xlsx로 저장해 주세요':'파일을 읽지 못했습니다: '+e.message};}}
+async function readFile(f){const b=badExtMsg(f.name);if(b)return{name:f.name,err:b};return readBytes(f.name,new Uint8Array(await f.arrayBuffer()));}
+const skipName=n=>/^(~\$|\.)/.test(n)||/^thumbs\.db$/i.test(n)||/^desktop\.ini$/i.test(n);
+async function setSingle(slot,file){S[slot]=await readFile(file);S.result=null;render();}
+async function addDetails(files){files=files.filter(f=>!skipName(f.name));
+  const st=$('st-detail');st.className='status wait';st.textContent='읽는 중… (0/'+files.length+')';
+  let k=0;for(const f of files){S.details.push(await readFile(f));if(++k%20===0)st.textContent='읽는 중… ('+k+'/'+files.length+')';}
+  S.result=null;render();}
+function slotStatus(id,d,kind){const el=$(id);
+  if(kind==='detail'){if(!S.details.length){el.className='status wait';el.textContent='아직 없음';return;}
+    const bad=S.details.filter(x=>x.err).length;el.className='status '+(bad?'bad':'ok');
+    el.textContent=S.details.length+'개 불러옴'+(bad?' · 읽기 실패 '+bad+'개 (실행 후 오류 목록에 표시)':'');return;}
+  if(!d){el.className='status wait';el.textContent='아직 없음';return;}
+  if(d.err){el.className='status bad';el.textContent=d.name+' — '+d.err;return;}
+  el.className='status ok';el.textContent='✓ '+d.name+' ('+Math.max(0,d.rows.length-1)+'행)';}
+function render(){
+  slotStatus('st-plan',S.plan);slotStatus('st-master',S.master);slotStatus('st-detail',null,'detail');
+  const ready=S.master&&!S.master.err&&S.details.length;
+  $('run').disabled=!ready;
+  $('run-hint').textContent=ready?(S.plan&&!S.plan.err?'준비 완료':'출고계획현황 없이도 실행할 수 있지만, 구분이 미분류로 나올 수 있습니다.'):'전체출고현황과 세부현황을 넣으면 실행할 수 있습니다.';
+  if(!S.result){$('match-area').innerHTML='';$('result-card').classList.add('hidden');}
+}
+function opts(){return{month:$('opt-month').value,threshold:Math.max(0,parseFloat($('opt-th').value)||0),missingAs:$('opt-missing').value,pblInRatio:$('opt-pblratio').value==='yes'};}
+const h=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function htmlTable(rows,limit){
+  const head=rows[0]||[],body=rows.slice(1,limit?limit+1:undefined);
+  return'<div class="tbl"><table><thead><tr>'+head.map(c=>'<th>'+h(c&&c.v)+'</th>').join('')+'</tr></thead><tbody>'+
+    body.map(r=>{const sub=r.some(c=>c&&c.b&&(c.fill==='sub'||c.fill==='total'));
+      return'<tr'+(sub?' class="sub"':'')+'>'+r.map(c=>{if(!c)return'<td></td>';const cls=[typeof c.v==='number'?'num':'',c.fill==='over'?'over':c.fill==='under'?'under':''].join(' ').trim();
+        return'<td'+(cls?' class="'+cls+'"':'')+'>'+h(fmtCell(c))+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>'+
+    (limit&&rows.length-1>limit?'<p class="muted">처음 '+limit+'행만 표시 (전체 '+(rows.length-1)+'행은 엑셀에서 확인)</p>':'');}
+function run(){
+  const o=opts();
+  try{S.result=analyze({master:S.master,plan:S.plan&&!S.plan.err?S.plan:null,details:S.details},o);S.built=buildSheets(S.result);}
+  catch(e){S.result=null;$('match-area').innerHTML='<div class="msg bad">'+h(e.message)+'</div>';$('result-card').classList.add('hidden');return;}
+  const R=S.result,st=S.built.stats,E=R.errors.length,W=R.warns.length;
+  $('match-area').innerHTML='<div class="stats" style="margin-top:14px">'+
+    '<div class="stat '+(st.matched===st.items?'ok':'warn')+'"><div class="k">매칭된 품목</div><div class="v">'+st.matched+' / '+st.items+'</div></div>'+
+    '<div class="stat"><div class="k">넣은 세부현황 파일</div><div class="v">'+R.inputCount+'</div></div>'+
+    '<div class="stat '+(E?'bad':'ok')+'"><div class="k">오류</div><div class="v">'+E+'</div></div>'+
+    '<div class="stat '+(W?'warn':'ok')+'"><div class="k">경고</div><div class="v">'+W+'</div></div></div>'+
+    (E+W?'<h4>확인이 필요한 항목</h4>'+htmlTable(S.built.sheets.find(s=>s.name==='⑧매칭오류').rows,200)+
+      '<p class="muted">파일을 고친 뒤 세부현황을 [비우기] 하고 다시 넣거나, 빠진 파일만 추가로 넣고 다시 실행하세요.</p>':'<p>모든 세부현황이 정상적으로 매칭되었습니다.</p>');
+  const sh=n=>S.built.sheets.find(s=>s.name===n).rows;
+  $('result-area').innerHTML='<div class="stats">'+
+    '<div class="stat"><div class="k">계획 품목 (PBL 제외)</div><div class="v">'+st.planNP+'</div></div>'+
+    '<div class="stat"><div class="k">계획 + PBL</div><div class="v">'+st.planPbl+'</div></div>'+
+    '<div class="stat bad"><div class="k">저해 (초과투입)</div><div class="v">'+st.over+'</div></div>'+
+    '<div class="stat"><div class="k">저해 (과소투입)</div><div class="v" style="color:var(--accent)">'+st.under+'</div></div></div>'+
+    '<h4>① 전체현황 (공장별 × 출고구분)</h4>'+htmlTable(sh('①전체현황'))+
+    '<h4>② 계획 품목 주/보조작업장 인시 비율</h4>'+htmlTable(sh('②계획_작업장비율').filter(r=>r.length>1))+
+    '<h4>④ 저해품목 (편차 큰 순)</h4>'+(st.bad?htmlTable(sh('④저해품목').map(r=>r.slice(0,12)),30):'<p>저해품목이 없습니다.</p>')+
+    '<p class="muted">엑셀에는 ③계획 품목별 현황, ⑤저해품목 공정별 세부, ⑥계획 PBL 현황, ⑦통합원자료, ⑧매칭오류, ⑨처리정보 시트도 함께 들어 있습니다.</p>';
+  $('dl-name').textContent=fileName();
+  $('result-card').classList.remove('hidden');
+}
+function fileName(){const m=$('opt-month').value;return'인시통합_'+(m||'결과')+'.xlsx';}
+function download(bytes,name,mime){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([bytes],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);}
+async function filesFromDrop(dt){
+  const entries=[...(dt.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+  if(!entries.length)return[...dt.files];const out=[];
+  async function walk(e){if(e.isFile)out.push(await new Promise((res,rej)=>e.file(res,rej)));
+    else if(e.isDirectory){const r=e.createReader();let b;do{b=await new Promise((res,rej)=>r.readEntries(res,rej));for(const c of b)await walk(c);}while(b.length);}}
+  for(const e of entries)await walk(e);return out;}
+function setupDrop(zoneId,onFiles){const z=$(zoneId);
+  z.addEventListener('dragover',e=>{e.preventDefault();z.classList.add('over');});
+  z.addEventListener('dragleave',()=>z.classList.remove('over'));
+  z.addEventListener('drop',async e=>{e.preventDefault();z.classList.remove('over');onFiles(await filesFromDrop(e.dataTransfer));});}
+function renderAliases(){
+  let x='<thead><tr><th>파일</th><th>항목</th><th>찾을 열 이름 (쉼표로 구분)</th></tr></thead><tbody>';
+  for(const g of['plan','master','detail'])for(const k in ALIASES[g]){if(k==='_label')continue;
+    x+='<tr><td>'+h(ALIASES[g]._label)+'</td><td>'+h(FIELD_LABEL[k]||k)+(g==='master'&&k==='shop'?' = 주작업장':'')+'</td><td><input type="text" data-g="'+g+'" data-k="'+k+'" value="'+h(ALIASES[g][k].join(', '))+'"></td></tr>';}
+  $('alias-tbl').innerHTML=x+'</tbody>';}
+function init(){
+  const d=new Date();d.setMonth(d.getMonth()-1);$('opt-month').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  document.querySelectorAll('[data-pick]').forEach(b=>b.addEventListener('click',()=>$('in-'+b.dataset.pick).click()));
+  $('in-plan').addEventListener('change',e=>{if(e.target.files[0])setSingle('plan',e.target.files[0]);e.target.value='';});
+  $('in-master').addEventListener('change',e=>{if(e.target.files[0])setSingle('master',e.target.files[0]);e.target.value='';});
+  $('in-detail').addEventListener('change',e=>{addDetails([...e.target.files]);e.target.value='';});
+  $('in-detailDir').addEventListener('change',e=>{addDetails([...e.target.files]);e.target.value='';});
+  setupDrop('dz-plan',f=>f[0]&&setSingle('plan',f[0]));
+  setupDrop('dz-master',f=>f[0]&&setSingle('master',f[0]));
+  setupDrop('dz-detail',f=>addDetails(f));
+  $('clear-detail').addEventListener('click',()=>{S.details=[];S.result=null;render();});
+  $('run').addEventListener('click',run);
+  $('download').addEventListener('click',()=>{if(S.built)download(makeXlsx(S.built.sheets),fileName(),'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');});
+  $('demo').addEventListener('click',()=>{const D=demoData(true);
+    S.plan=readBytes('출고계획현황(예시).xlsx',D.plan);S.master=readBytes('전체출고현황(예시).xlsx',D.master);S.details=D.details.map(x=>readBytes(x.name,x.bytes));
+    window.__demoTruth=D.truth;S.result=null;render();run();});
+  $('sample-zip').addEventListener('click',()=>{const D=demoData(false);
+    const files=[{name:'sample/plan_example.xlsx',data:D.plan},{name:'sample/master_example.xlsx',data:D.master},...D.details.map(x=>({name:'sample/detail/'+x.name,data:x.bytes})),
+      {name:'sample/README.txt',data:'﻿예시 파일 (가상 데이터)\r\nplan_example.xlsx   = 출고계획현황\r\nmaster_example.xlsx = 전체출고현황\r\ndetail/숫자.xlsx    = 세부현황 (파일 이름 = 순번)\r\n'}];
+    download(makeZip(files),'인시통합_예시파일.zip','application/zip');});
+  renderAliases();
+  $('alias-tbl').addEventListener('change',e=>{const t=e.target;if(!t.dataset.g)return;
+    ALIASES[t.dataset.g][t.dataset.k]=t.value.split(/[,，]/).map(s=>s.trim()).filter(Boolean);saveAliases(ALIASES);S.result=null;render();});
+  $('alias-reset').addEventListener('click',()=>{ALIASES=JSON.parse(JSON.stringify(DEF_ALIASES));saveAliases(ALIASES);renderAliases();S.result=null;render();});
+  ['opt-th','opt-missing','opt-pblratio'].forEach(id=>$(id).addEventListener('change',()=>{if(S.result)run();}));
+  $('opt-month').addEventListener('change',()=>{if(S.result)$('dl-name').textContent=fileName();});
+  render();
+}
+window.App={inflateRaw,readZip,parseXlsx,makeXlsx,makeZip,analyze,buildSheets,demoData,readBytes};
+init();
+</script>
+</body>
+</html>
